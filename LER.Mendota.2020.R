@@ -4,7 +4,7 @@ setwd("./Mendota2020/")
 ## Load required libraries for the workshop
 library(gotmtools)
 #library(LakeEnsemblR)
-#devtools::install_github('aemon-j/LakeEnsemblR')
+devtools::install_github('aemon-j/LakeEnsemblR')
 library(LakeEnsemblR)
 library(ggplot2)
 library(ggpubr)
@@ -71,7 +71,7 @@ plot_heatmap("output/ensemble_output.nc")+
                          colours = rev(RColorBrewer::brewer.pal(11, "Spectral")))+
   theme_light()
 
-ggsave("LER.with.inflow.pdf", width = 11, height = 8.5, units = "in")
+ggsave("LER.with.inflow..a.seiche.0.001.pdf", width = 11, height = 8.5, units = "in")
 
 ## Create a plot with time series and time series of residuals at 10 m depth
 depth <- seq(from = 0 , to= 24, by =1 )
@@ -137,13 +137,14 @@ for (i in 1:length(dates)){
 #              add = FALSE)
 
 ## Plot the result
-# p3 <- plot_heatmap("output/ensemble_output.nc", var = "dens") +
-#   theme_light() + scale_colour_gradientn(limits = c(998, 1001),
-#                                          colours = rev(brewer.pal(11, "Spectral")))
-# p4 <- plot_ensemble("output/ensemble_output.nc", model = c("FLake", "GLM",
-#                                                            "GOTM", "Simstrat",
-#                                                            "MyLake"),
-#                     var = "dens", date = "2010-05-27 00:00:00") +
+# plot_heatmap("output/ensemble_output.nc", var = "dens") +
+# #   theme_light() + scale_colour_gradientn(limits = c(998, 1001),
+# #                                          colours = rev(brewer.pal(11, "Spectral")))
+# 
+# plot_ensemble("output/ensemble_output.nc", model = c("FLake", "GLM",
+#                                                             "GOTM", "Simstrat",
+#                                                             "MyLake"),
+#                      var = "dens", date = "2020-07-24 00:00:00") +
 #   theme_light()
 # 
 # ggarrange(p3, p4, ncol = 1, nrow = 2)
@@ -247,6 +248,9 @@ p <- ggplot(strat_df, aes(model, TotStratDur)) +
   ylab("Total stratification duration [days]") +
   xlab("") +
   theme_classic()
+
+p 
+
 ggsave("output/model_ensemble_stratification.png", p,  dpi = 300, width = 284, height = 284, units = "mm")
 
 # 7. Add ensemble members ----

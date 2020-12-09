@@ -90,7 +90,7 @@
    Kw = 0.4
 /
 &inflow
-   num_inflows = 1
+   num_inflows = 0
    names_of_strms = 'Riv1'
    subm_flag = .false.
    strm_hf_angle = 65
