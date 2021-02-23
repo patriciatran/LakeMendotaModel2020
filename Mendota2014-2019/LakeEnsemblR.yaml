@@ -7,8 +7,8 @@ location:
    hypsograph: LakeEnsemblR_bathymetry_standard.csv      # hypsograph [default=]
    init_depth: 23                                # initial height of lake surface relative to the bottom [m]
 time:
-   start: 2020-04-03 00:00:00                    # start date and time [yyyy-mm-dd HH:MM:SS; default=2017-01-01 00:00:00]
-   stop: 2020-11-21 00:00:00                     # stop date and time [yyyy-mm-dd HH:MM:SS; default=2018-01-01 00:00:00]
+   start: 2014-05-04 00:00:00                    # start date and time [yyyy-mm-dd HH:MM:SS; default=2017-01-01 00:00:00]
+   stop: 2019-11-12 00:00:00                     # stop date and time [yyyy-mm-dd HH:MM:SS; default=2018-01-01 00:00:00]
    time_step: 3600.0                             # time step for integration [s; min=0.0; default=3600.0]
 config_files:
    GOTM: GOTM/gotm.yaml                          # GOTM config file (yaml format)
