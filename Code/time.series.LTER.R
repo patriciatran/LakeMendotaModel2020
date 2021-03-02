@@ -1,6 +1,6 @@
 # Testing time series for Lake Mendota using Hilary's R package and LTER data:
-install.packages("devtools")
-devtools::install_github("hdugan/NTLlakeloads")
+#install.packages("devtools")
+#devtools::install_github("hdugan/NTLlakeloads")
 library(NTLlakeloads)
 
 # Use these objects names, hardcoded at the moment

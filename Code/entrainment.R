@@ -32,9 +32,9 @@ LTERnutrient.df.kz <- full_join(LTERnutrients.df, kz_values.long, by=c("sampleda
 
 # Only get the times with kz values:
 LTERnutrient.df.kz <- LTERnutrient.df.kz %>% filter(!is.na(kz),
-                                                    !is.na(lakeid),
-                                                    rep == 1)
+                                                    !is.na(lakeid))
 
+write.csv(LTERnutrient.df.kz, "../Data/LTERnutrient.df.kz.csv", row.names=FALSE)
 dim(LTERnutrient.df.kz)
 
 # The entrainment calculations is:
