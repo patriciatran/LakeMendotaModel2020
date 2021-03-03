@@ -188,29 +188,42 @@ ggplot(LTERnutrient.df.kz.test.unique)+
 
 ggsave("Plots/Entrainment/ice.on.ice.off.load.diff.no3.no2.dashed.PDF", width = 11, height = 8.5, units="in")
 
+## Adding stratification onset and off-set information:
+stratification <- read.table("Data/start.onset.offset.TSV", sep="\t", header=TRUE)
+stratification$Onset_date <- as.Date(stratification$Onset, origin=paste0(stratification$year,"-01-01"))
+stratification$Offset_date <- as.Date(stratification$Offset, origin=paste0(stratification$year,"-01-01"))
 
-# There are some negative values but I think that's because of the lab days that is negative...I need to figure out something for that.
 
-# To calculate the change in load between two time points
 
-# for (i in 1:length(dates)){
-#   
-#   day.of.data <- LTERnutrient.df.kz.nh4 %>% filter(sampledate == dates[i]) 
-#   
-#   for (depth.j in 1:nrow(day.of.data)){
-#     kz.value <- day.of.data$kz[depth.j]
-#     upper.concentration <- day.of.data$nh4_sloh[depth.j]
-#     lower.concentration <- day.of.data$nh4_sloh[depth.j]
-#     depth.upper <- day.of.data$depth[depth.j]
-#     depth.lower <- day.of.data$depth[depth.j+1]
-#     hypso.area.upper <- hypso %>% filter(Depth_meter == depth.upper) 
-#     hypso.area.upper <- hypso.area.upper$Area_meterSquared[1]
-#     hypso.area.lower <- hypso %>% filter(Depth_meter == depth.lower)
-#     hypso.area.lower <- hypso.area.lower$Area_meterSquared[1]
-#     hypso.area.calc <- abs(hypso.area.lower-hypso.area.upper)
-#     
-#     equation <- (kz.value * (lower.concentration - upper.concentration) ) /hypso.area.calc
-# 
-#     LTER  
-#     }
-# }
+stratification <- stratification %>% filter(year > 2014)
+
+ggplot(LTERnutrient.df.kz.test.unique)+
+  geom_point(aes(x=sampledate, y=changeinLoad))+
+  ylab(expression(paste("NO3NO2 in g /",day^-1,m^2^-1)))+
+  theme_bw()+
+  ggtitle("Load difference in whole water column between time points")+
+  annotate( #ice-on
+    "segment",
+    x=ice.data.to.plot$date,
+    xend=ice.data.to.plot$date,
+    y=2,
+    yend=-0.5,
+    color=ice.data.to.plot$color.to.plot,
+    alpha=0.5,
+    linetype=2
+  )+
+  annotate( #stratification
+    "segment",
+    x=stratification$date_strat,
+    xend=stratification$date_strat,
+    y=2,
+    yend=-0.5,
+    color="green",
+    alpha=0.5,
+    linetype=2
+  )+
+  ylim(-0.5,2)+
+  ggtitle("Red line = Ice on, \nBlue off = Ice off, \nGreen = Stratification onset and offset")
+
+ggsave("Plots/Entrainment/ice.on.ice.off.strat.load.diff.no3.no2.dashed.PDF", width = 11, height = 8.5, units="in")
+
