@@ -83,26 +83,83 @@ average_temp_depth$datetime <- ymd(average_temp_depth$datetime)
 LTERnutrient.df.kz <- left_join(LTERnutrient.df.kz, average_temp_depth, by=c("sampledate"="datetime"))
 
 # Now I want to add a column that says whether the sample is above or below the thermocline. If depth < thermo = epi, else hypo
-LTERnutrient.df.kz<-LTERnutrient.df.kz %>% mutate(layer = ifelse(depth < thermocline, "epi","hypo"))
+#LTERnutrient.df.kz<-LTERnutrient.df.kz %>% mutate(layer = ifelse(depth < thermocline, "epi","hypo"))
 
-# Only work with the epilimnion layer:
+LTERnutrient.df.kz$layer = ""
+
+for (i in 1:nrow(LTERnutrient.df.kz)){
+  if (is.na(LTERnutrient.df.kz$thermocline[i])){
+    LTERnutrient.df.kz$layer[i] = "mixed"
+  }
+  else if(LTERnutrient.df.kz$depth[i] < LTERnutrient.df.kz$thermocline[i]){
+    LTERnutrient.df.kz$layer[i] = "epi"
+  }
+  else{
+    LTERnutrient.df.kz$layer[i] = "hypo"
+  }
+  print(i)
+}
+
 table(LTERnutrient.df.kz$layer)
-nrow(is.na(LTERnutrient.df.kz$layer)) # now every date has a thermocline :-)
+
+nrow(is.na(LTERnutrient.df.kz$layer)) # now every date has a layer classification :-)
+
+#### SAVE DATA ####
+saveRDS(LTERnutrient.df.kz, "Data/LTERnutrient.df.kz.RDS")
+
+#### LOAD DATA ####
+LTERnutrient.df.kz <- readRDS("Data/LTERnutrient.df.kz.RDS")
+str(LTERnutrient.df.kz)
+
+#### THIS IS THE PART YOU CAN EDIT DEPENDING ON YOUR QUESTION####
+# DO YOU WANT TO INTEGRATE OVER THE WHOLE WATER COLUMN OR JUST A LAYER?
+# WHICH VARIABLES DO YOU WANT TO PLOT?
+
+#layer.to.plot <- c("epi","hypo","mixed") # whole water column
+
+layer.to.plot <- c("epi","mixed") # epi layer only
+
+# variables I've plotted: start with those that are mg/L:
+#nh4_sloh, no3no2_sloh, totpuf_sloh, drp_sloh
+
+var.to.plot <- "drp_sloh"
+
 
 
 #Let's try to calculate the load difference in nh4 in the whole water column between time steps:
-LTERnutrient.df.kz.test <- LTERnutrient.df.kz %>% filter(!is.na(no3no2_sloh))
+#LTERnutrient.df.kz.test <- LTERnutrient.df.kz %>% filter(!is.na(var.to.plot))
+#LTERnutrient.df.kz %>% nrow()
+#LTERnutrient.df.kz.test <- LTERnutrient.df.kz %>% filter(!is.na(no3no2_sloh))
+#LTERnutrient.df.kz %>% filter(!is.na(no3no2_sloh)) %>% nrow() 
+#LTERnutrient.df.kz %>% filter(!is.na(var.to.plot)) %>% nrow() 
 
-LTERnutrient.df.kz.test <- LTERnutrient.df.kz.test %>% group_by(sampledate) %>% mutate(massArea = trapz(depth, no3no2_sloh))
+LTERnutrient.df.kz.test <- LTERnutrient.df.kz %>% filter(!is.na(!!as.symbol(var.to.plot))) %>%
+  filter(layer %in% layer.to.plot)
+
+# Save name of the layers so I can name my plots accordingly:
+layer.names <- gsub(", ","",toString(layer.to.plot))
+
+nrow(LTERnutrient.df.kz.test)
+
+#LTERnutrient.df.kz.test <- LTERnutrient.df.kz.test %>% 
+#  group_by(sampledate) %>% 
+#  mutate(massArea = trapz(depth, !!as.symbol(var.to.plot)))
+
+
+LTERnutrient.df.kz.test <- LTERnutrient.df.kz.test %>% 
+  group_by(sampledate) %>% 
+  mutate(massArea = trapz(depth, no3no2_sloh))
+
+
 # Quickly plot the values over time:
 ggplot(LTERnutrient.df.kz.test)+
   geom_point(aes(x=sampledate, y=massArea), color="blue")+
-  geom_point(aes(x=sampledate, y=no3no2_sloh), color="red")+
+  geom_point(aes(x=sampledate, y=!!as.symbol(var.to.plot)), color="red")+
   theme_bw()+
-  ggtitle("Red= NO3NO2 concentrations, \nBlue = Calculated change in concentrations over depth per time")+
+  ggtitle(paste0("Red=",var.to.plot,"\nBlue = Calculated change in concentrations over depth per time"))+
   ylab("Red: [mass/time] , Blue [mg/L]")
 
-ggsave("Plots/Entrainment/calculation.mass.over.area.PDF", width = 11, height = 5, units = "in")
+ggsave(paste0("Plots/Entrainment/calculation.mass.over.area.",var.to.plot,"_",layer.names,".PDF"), width = 11, height = 5, units = "in")
 
 #Now that we have our first equation, we should use that value to find the difference in that value between two time points.
 LTERnutrient.df.kz.test.lag.day <- LTERnutrient.df.kz.test %>% select(sampledate, massArea)
@@ -128,13 +185,19 @@ LTERnutrient.df.kz.test.unique <- LTERnutrient.df.kz.test.lag.day %>% select(sam
 
 LTERnutrient.df.kz.test.unique$changeinLoad <- lag(LTERnutrient.df.kz.test.unique$massArea)/LTERnutrient.df.kz.test.lag.day$lagDay
 
+### NOTE ABOUT UNITS!!
+# I'll change the code later to make sure the units are right but for now... whatever!
+
+ymin = min(LTERnutrient.df.kz.test.unique$changeinLoad, na.rm=T)
+ymax = max(LTERnutrient.df.kz.test.unique$changeinLoad, na.rm=T)
+
 ggplot(LTERnutrient.df.kz.test.unique)+
   geom_point(aes(x=sampledate, y=changeinLoad))+
-  ylab(expression(paste("NO3NO2 in g /",day^-1,m^2^-1)))+
+  ylab((paste0(var.to.plot, " in g ",expression(day^-1,m^2^-1))))+
   theme_bw()+
-  ggtitle("Load difference in whole water column between time points")
+  ggtitle("Load difference in water column between time points")
 
-ggsave("Plots/Entrainment/Load.diff.no3no2.over.time.one.layer.PDF", width = 11, height = 6, units = "in")
+ggsave(paste0("Plots/Entrainment/",var.to.plot,"_",layer.names,".Load.diff.over.time.one.layer.PDF"), width = 11, height = 6, units = "in")
 
 min(LTERnutrient.df.kz.test.unique$sampledate)
 max(LTERnutrient.df.kz.test.unique$sampledate)
@@ -149,81 +212,43 @@ ice.data.to.plot <- ice.data %>% filter(variable == "ice_on_doy" | variable == "
 
 ice.data.to.plot <- ice.data.to.plot %>% mutate(color.to.plot = ifelse(variable == "ice_on_doy","red","blue"))
 
-ggplot(LTERnutrient.df.kz.test.unique)+
-  geom_point(aes(x=sampledate, y=changeinLoad))+
-  ylab(expression(paste("NO3NO2 in g /",day^-1,m^2^-1)))+
-  theme_bw()+
-  ggtitle("Load difference in whole water column between time points")+
-  annotate( #ice-on
-    "segment",
-    x=ice.data.to.plot$date,
-    xend=ice.data.to.plot$date,
-    y=2,
-    yend=1.5,
-    color=ice.data.to.plot$color.to.plot,
-    arrow=arrow(length=unit(0.05,"npc")
-    ))+
-  ylim(-0.5,2)+
-  ggtitle("Red arrow = Ice on, Blue arrow = Ice off")
-
-ggsave("Plots/Entrainment/ice.on.ice.off.load.diff.no3.no2.PDF", width = 11, height = 8.5, units="in")
-
-ggplot(LTERnutrient.df.kz.test.unique)+
-  geom_point(aes(x=sampledate, y=changeinLoad))+
-  ylab(expression(paste("NO3NO2 in g /",day^-1,m^2^-1)))+
-  theme_bw()+
-  ggtitle("Load difference in whole water column between time points")+
-  annotate( #ice-on
-    "segment",
-    x=ice.data.to.plot$date,
-    xend=ice.data.to.plot$date,
-    y=2,
-    yend=-0.5,
-    color=ice.data.to.plot$color.to.plot,
-    alpha=0.5,
-    linetype=2
-    )+
-  ylim(-0.5,2)+
-  ggtitle("Red line = Ice on, Blue off = Ice off")
-
-ggsave("Plots/Entrainment/ice.on.ice.off.load.diff.no3.no2.dashed.PDF", width = 11, height = 8.5, units="in")
-
 ## Adding stratification onset and off-set information:
 stratification <- read.table("Data/start.onset.offset.TSV", sep="\t", header=TRUE)
 stratification$Onset_date <- as.Date(stratification$Onset, origin=paste0(stratification$year,"-01-01"))
 stratification$Offset_date <- as.Date(stratification$Offset, origin=paste0(stratification$year,"-01-01"))
 
-
-
 stratification <- stratification %>% filter(year > 2014)
+
+stratification <- stratification %>% gather(variable_strat, date_strat, Onset_date:Offset_date)
+
 
 ggplot(LTERnutrient.df.kz.test.unique)+
   geom_point(aes(x=sampledate, y=changeinLoad))+
-  ylab(expression(paste("NO3NO2 in g /",day^-1,m^2^-1)))+
+  ylab(expression(paste("in g ",day^-1,m^2^-1)))+
   theme_bw()+
-  ggtitle("Load difference in whole water column between time points")+
+  ggtitle("Load difference in water column between time points")+
   annotate( #ice-on
     "segment",
     x=ice.data.to.plot$date,
     xend=ice.data.to.plot$date,
-    y=2,
-    yend=-0.5,
+    y=ymax,
+    yend=0,
     color=ice.data.to.plot$color.to.plot,
-    alpha=0.5,
+    alpha=1,
     linetype=2
   )+
   annotate( #stratification
     "segment",
     x=stratification$date_strat,
     xend=stratification$date_strat,
-    y=2,
-    yend=-0.5,
-    color="green",
-    alpha=0.5,
+    y=ymax,
+    yend=0,
+    color="dark green",
+    alpha=1,
     linetype=2
   )+
-  ylim(-0.5,2)+
-  ggtitle("Red line = Ice on, \nBlue off = Ice off, \nGreen = Stratification onset and offset")
+  ylim(ymin-0.5,ymax+0.5)+
+  ggtitle(paste0(as.character(var.to.plot),", layer=",layer.names),
+    subtitle = "Red line = Ice on, \nBlue off = Ice off, \nGreen = Stratification onset and offset")
 
-ggsave("Plots/Entrainment/ice.on.ice.off.strat.load.diff.no3.no2.dashed.PDF", width = 11, height = 8.5, units="in")
-
+ggsave(paste0("Plots/Entrainment/ice.on.ice.off.strat.load.diff.",var.to.plot,"_",layer.names,".dashed.PDF"), width = 11, height = 8.5, units="in")

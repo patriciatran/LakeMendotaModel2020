@@ -69,3 +69,7 @@ g5 = ggplot(m.df.ice, aes(year4, value)) +
   theme_minimal();g5
 ggsave(file=paste0('Plots/Entrainment/icecover.png'), g5, dpi = 300,width = 6,height = 6, units = 'in')
 
+
+m.df.ice.2014.forward <- m.df.ice %>% filter(year4 > 2014)
+
+saveRDS(m.df.ice.2014.forward, "Data/ice.data.RDS")
