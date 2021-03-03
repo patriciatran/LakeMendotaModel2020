@@ -122,7 +122,7 @@ layer.to.plot <- c("epi","mixed") # epi layer only
 # variables I've plotted: start with those that are mg/L:
 #nh4_sloh, no3no2_sloh, totpuf_sloh, drp_sloh
 
-var.to.plot <- "no3no2_sloh"
+var.to.plot <- "drp_sloh"
 
 
 
