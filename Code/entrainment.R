@@ -122,7 +122,7 @@ layer.to.plot <- c("epi","mixed") # epi layer only
 # variables I've plotted: start with those that are mg/L:
 #nh4_sloh, no3no2_sloh, totpuf_sloh, drp_sloh
 
-var.to.plot <- "drp_sloh"
+var.to.plot <- "no3no2_sloh"
 
 
 
@@ -148,7 +148,7 @@ nrow(LTERnutrient.df.kz.test)
 
 LTERnutrient.df.kz.test <- LTERnutrient.df.kz.test %>% 
   group_by(sampledate) %>% 
-  mutate(massArea = trapz(depth, no3no2_sloh))
+  mutate(massArea = trapz(depth, !!as.symbol(var.to.plot)))
 
 
 # Quickly plot the values over time:
@@ -247,7 +247,7 @@ ggplot(LTERnutrient.df.kz.test.unique)+
     alpha=1,
     linetype=2
   )+
-  ylim(ymin-0.5,ymax+0.5)+
+  ylim(ymin-(ymin/100*20),ymax+(ymax/100*20))+
   ggtitle(paste0(as.character(var.to.plot),", layer=",layer.names),
     subtitle = "Red line = Ice on, \nBlue off = Ice off, \nGreen = Stratification onset and offset")
 
