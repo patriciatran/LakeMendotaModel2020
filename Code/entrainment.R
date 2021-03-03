@@ -35,7 +35,7 @@ LTERnutrient.df.kz <- full_join(LTERnutrients.df, kz_values.long, by=c("sampleda
 LTERnutrient.df.kz <- LTERnutrient.df.kz %>% filter(!is.na(kz),
                                                     !is.na(lakeid))
 
-write.csv(LTERnutrient.df.kz, "../Data/LTERnutrient.df.kz.csv", row.names=FALSE)
+write.csv(LTERnutrient.df.kz, "Data/LTERnutrient.df.kz.csv", row.names=FALSE)
 dim(LTERnutrient.df.kz)
 
 
@@ -50,7 +50,7 @@ hypso <- read.csv("Mendota2014-2019/LakeEnsemblR_bathymetry_standard.csv")
 
 ggplot(hypso, aes(x=Area_meterSquared, y=-Depth_meter)) + geom_point()
 
-
+ggsave("Plots/Entrainment/Hypso.PDF", height = 6, width = 6, units="in")
 #add a column with the hypsometry file values next to the LTERnutrient.df.kz
 LTERnutrient.df.kz <- left_join(LTERnutrient.df.kz, hypso, by=c("depth"="Depth_meter"))
 
@@ -64,36 +64,132 @@ ggplot(LTERnutrient.df.kz,aes(x=sampledate, y=kz, color=depth))+
 
 ggsave("Plots/Entrainment/kz.values.over.time.PDF", width = 11, height = 5, units="in")
 
+# Before we plot anything , we must distinguish between the epilimnion and the hypolimnion:
+# we have to load the temperature data and merge that to our table first:
+water.temp <- read.csv("Mendota2014-2019/LakeEnsemblR_wtemp_profile_standard.csv")
+# calculate the thermocline for each day:
+library(rLakeAnalyzer)
+# To make correct calculations, it is better to remove the NA values first:
+water.temp <- water.temp %>% filter(!is.na(Water_Temperature_celsius))
+average_temp_depth <- water.temp %>% group_by(datetime, Depth_meter) %>% summarise(average=mean(Water_Temperature_celsius))
 
-#Let's try to calculate the load difference in nh4 in the epi between time steps:
+
+average_temp_depth <- average_temp_depth %>% mutate(thermocline = thermo.depth(average, Depth_meter))
+# We only care about the thermocline depth at each data, so let's collect those columns, and remove duplicates:
+average_temp_depth <- average_temp_depth %>% select(datetime, thermocline) %>% distinct()
+average_temp_depth$datetime <- ymd(average_temp_depth$datetime)
+
+# Add the thermocline data to our full table:
+LTERnutrient.df.kz <- left_join(LTERnutrient.df.kz, average_temp_depth, by=c("sampledate"="datetime"))
+
+# Now I want to add a column that says whether the sample is above or below the thermocline. If depth < thermo = epi, else hypo
+LTERnutrient.df.kz<-LTERnutrient.df.kz %>% mutate(layer = ifelse(depth < thermocline, "epi","hypo"))
+
+# Only work with the epilimnion layer:
+table(LTERnutrient.df.kz$layer)
+nrow(is.na(LTERnutrient.df.kz$layer)) # now every date has a thermocline :-)
+
+
+#Let's try to calculate the load difference in nh4 in the whole water column between time steps:
 LTERnutrient.df.kz.test <- LTERnutrient.df.kz %>% filter(!is.na(no3no2_sloh))
 
-LTERnutrient.df.kz.test <- LTERnutrient.df.kz.test %>% group_by(sampledate) %>% mutate(massArea = sqrt(trapz(depth, no3no2_sloh)))
+LTERnutrient.df.kz.test <- LTERnutrient.df.kz.test %>% group_by(sampledate) %>% mutate(massArea = trapz(depth, no3no2_sloh))
 # Quickly plot the values over time:
 ggplot(LTERnutrient.df.kz.test)+
   geom_point(aes(x=sampledate, y=massArea), color="blue")+
   geom_point(aes(x=sampledate, y=no3no2_sloh), color="red")+
   theme_bw()+
-  ggtitle("Red= NO3NO2 concentrations, \nBlue = Calculated change in concentrations over dates per time")+
+  ggtitle("Red= NO3NO2 concentrations, \nBlue = Calculated change in concentrations over depth per time")+
   ylab("Red: [mass/time] , Blue [mg/L]")
 
 ggsave("Plots/Entrainment/calculation.mass.over.area.PDF", width = 11, height = 5, units = "in")
 
 #Now that we have our first equation, we should use that value to find the difference in that value between two time points.
-LTERnutrient.df.kz.test.lag.day <- LTERnutrient.df.kz.test %>% group_by(sampledate) %>% mutate(lagDay = lag(sampledate))
+LTERnutrient.df.kz.test.lag.day <- LTERnutrient.df.kz.test %>% select(sampledate, massArea)
+LTERnutrient.df.kz.test.lag.day$sampledate <- ymd(LTERnutrient.df.kz.test.lag.day$sampledate)
+# Convert to numeric dates:
 
-LTERnutrient.df.kz.test.unique <- LTERnutrient.df.kz.test %>% select(sampledate, massArea) %>% distinct()
+LTERnutrient.df.kz.test.lag.day$numericdates <- as.numeric(LTERnutrient.df.kz.test.lag.day$sampledate)
 
-LTERnutrient.df.kz.test.unique$changeinLoad <- lag(LTERnutrient.df.kz.test.unique$massArea)
+# Remove duplicates:
+LTERnutrient.df.kz.test.lag.day <- LTERnutrient.df.kz.test.lag.day %>% distinct()
+
+lagDays <- NA
+
+lagDays2 <- diff(LTERnutrient.df.kz.test.lag.day$numericdates, lag=1)
+lagDays3 <- append(lagDays, lagDays2)
+
+lagDays3
+
+
+LTERnutrient.df.kz.test.lag.day$lagDay <- lagDays3
+
+LTERnutrient.df.kz.test.unique <- LTERnutrient.df.kz.test.lag.day %>% select(sampledate, massArea, lagDay) %>% distinct()
+
+LTERnutrient.df.kz.test.unique$changeinLoad <- lag(LTERnutrient.df.kz.test.unique$massArea)/LTERnutrient.df.kz.test.lag.day$lagDay
 
 ggplot(LTERnutrient.df.kz.test.unique)+
   geom_point(aes(x=sampledate, y=changeinLoad))+
-  ylab(expression(paste("NO3NO2 in mg /",day^-1,m^-1)))+
+  ylab(expression(paste("NO3NO2 in g /",day^-1,m^2^-1)))+
   theme_bw()+
-  ggtitle("Load difference in one layer (epilimnion) between time points")
+  ggtitle("Load difference in whole water column between time points")
 
 ggsave("Plots/Entrainment/Load.diff.no3no2.over.time.one.layer.PDF", width = 11, height = 6, units = "in")
 
+min(LTERnutrient.df.kz.test.unique$sampledate)
+max(LTERnutrient.df.kz.test.unique$sampledate)
+
+ice.data <- readRDS("Data/ice.data.RDS")
+
+ice.data$date <- as.Date(ice.data$value, origin=paste0(ice.data$year4,"-01-01"))
+ice.on <- ice.data %>% filter(variable == "ice_on_doy")
+ice.off <- ice.data %>% filter(variable == "ice_off_doy")
+
+ice.data.to.plot <- ice.data %>% filter(variable == "ice_on_doy" | variable == "ice_off_doy")
+
+ice.data.to.plot <- ice.data.to.plot %>% mutate(color.to.plot = ifelse(variable == "ice_on_doy","red","blue"))
+
+ggplot(LTERnutrient.df.kz.test.unique)+
+  geom_point(aes(x=sampledate, y=changeinLoad))+
+  ylab(expression(paste("NO3NO2 in g /",day^-1,m^2^-1)))+
+  theme_bw()+
+  ggtitle("Load difference in whole water column between time points")+
+  annotate( #ice-on
+    "segment",
+    x=ice.data.to.plot$date,
+    xend=ice.data.to.plot$date,
+    y=2,
+    yend=1.5,
+    color=ice.data.to.plot$color.to.plot,
+    arrow=arrow(length=unit(0.05,"npc")
+    ))+
+  ylim(-0.5,2)+
+  ggtitle("Red arrow = Ice on, Blue arrow = Ice off")
+
+ggsave("Plots/Entrainment/ice.on.ice.off.load.diff.no3.no2.PDF", width = 11, height = 8.5, units="in")
+
+ggplot(LTERnutrient.df.kz.test.unique)+
+  geom_point(aes(x=sampledate, y=changeinLoad))+
+  ylab(expression(paste("NO3NO2 in g /",day^-1,m^2^-1)))+
+  theme_bw()+
+  ggtitle("Load difference in whole water column between time points")+
+  annotate( #ice-on
+    "segment",
+    x=ice.data.to.plot$date,
+    xend=ice.data.to.plot$date,
+    y=2,
+    yend=-0.5,
+    color=ice.data.to.plot$color.to.plot,
+    alpha=0.5,
+    linetype=2
+    )+
+  ylim(-0.5,2)+
+  ggtitle("Red line = Ice on, Blue off = Ice off")
+
+ggsave("Plots/Entrainment/ice.on.ice.off.load.diff.no3.no2.dashed.PDF", width = 11, height = 8.5, units="in")
+
+
+# There are some negative values but I think that's because of the lab days that is negative...I need to figure out something for that.
 
 # To calculate the change in load between two time points
 
