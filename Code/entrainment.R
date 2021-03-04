@@ -1,6 +1,7 @@
 # Entrainment data phosphorus for Lake Mendota:
 
 # Testing time series for Lake Mendota using Hilary's R package and LTER data:
+#### PART 1: CLEAN DATA ####
 #install.packages("devtools")
 devtools::install_github("hdugan/NTLlakeloads")
 library(NTLlakeloads)
@@ -115,6 +116,12 @@ str(LTERnutrient.df.kz)
 # DO YOU WANT TO INTEGRATE OVER THE WHOLE WATER COLUMN OR JUST A LAYER?
 # WHICH VARIABLES DO YOU WANT TO PLOT?
 
+## THEME ##
+my_theme <- theme_bw()+
+  theme(text = element_text(size=15,colour = "black",family="sans"),
+        panel.background = element_blank(),
+        panel.grid = element_blank())
+
 #layer.to.plot <- c("epi","hypo","mixed") # whole water column
 
 layer.to.plot <- c("epi","mixed") # epi layer only
@@ -122,7 +129,7 @@ layer.to.plot <- c("epi","mixed") # epi layer only
 # variables I've plotted: start with those that are mg/L:
 #nh4_sloh, no3no2_sloh, totpuf_sloh, drp_sloh
 
-var.to.plot <- "drp_sloh"
+var.to.plot <- "totpuf_sloh"
 
 
 
@@ -153,13 +160,14 @@ LTERnutrient.df.kz.test <- LTERnutrient.df.kz.test %>%
 
 # Quickly plot the values over time:
 ggplot(LTERnutrient.df.kz.test)+
-  geom_point(aes(x=sampledate, y=massArea), color="blue")+
-  geom_point(aes(x=sampledate, y=!!as.symbol(var.to.plot)), color="red")+
-  theme_bw()+
+  geom_point(aes(x=sampledate, y=massArea), color="blue", size=4, alpha=0.7)+
+  geom_point(aes(x=sampledate, y=!!as.symbol(var.to.plot)), color="red", size=4, alpha=0.7)+
   ggtitle(paste0("Red=",var.to.plot,"\nBlue = Calculated change in concentrations over depth per time"))+
-  ylab("Red: [mass/time] , Blue [mg/L]")
+  ylab("Red: [mass/time] , Blue [mg/L]")+
+  my_theme
 
 ggsave(paste0("Plots/Entrainment/calculation.mass.over.area.",var.to.plot,"_",layer.names,".PDF"), width = 11, height = 5, units = "in")
+ggsave(paste0("Plots/Entrainment/calculation.mass.over.area.",var.to.plot,"_",layer.names,".png"), width = 11, height = 5, units = "in", dpi=300)
 
 #Now that we have our first equation, we should use that value to find the difference in that value between two time points.
 LTERnutrient.df.kz.test.lag.day <- LTERnutrient.df.kz.test %>% select(sampledate, massArea)
@@ -192,12 +200,13 @@ ymin = min(LTERnutrient.df.kz.test.unique$changeinLoad, na.rm=T)
 ymax = max(LTERnutrient.df.kz.test.unique$changeinLoad, na.rm=T)
 
 ggplot(LTERnutrient.df.kz.test.unique)+
-  geom_point(aes(x=sampledate, y=changeinLoad))+
+  geom_point(aes(x=sampledate, y=changeinLoad), size=4, alpha=0.7)+
   ylab((paste0(var.to.plot, " in g ",expression(day^-1,m^2^-1))))+
-  theme_bw()+
+  my_theme+
   ggtitle("Load difference in water column between time points")
 
 ggsave(paste0("Plots/Entrainment/",var.to.plot,"_",layer.names,".Load.diff.over.time.one.layer.PDF"), width = 11, height = 6, units = "in")
+ggsave(paste0("Plots/Entrainment/",var.to.plot,"_",layer.names,".Load.diff.over.time.one.layer.png"),dpi=300, width = 11, height = 6, units = "in")
 
 min(LTERnutrient.df.kz.test.unique$sampledate)
 max(LTERnutrient.df.kz.test.unique$sampledate)
@@ -223,9 +232,9 @@ stratification <- stratification %>% gather(variable_strat, date_strat, Onset_da
 
 
 ggplot(LTERnutrient.df.kz.test.unique)+
-  geom_point(aes(x=sampledate, y=changeinLoad))+
+  geom_point(aes(x=sampledate, y=changeinLoad), size=4, alpha=0.7)+
   ylab(expression(paste("in g ",day^-1,m^2^-1)))+
-  theme_bw()+
+  my_theme+
   ggtitle("Load difference in water column between time points")+
   annotate( #ice-on
     "segment",
@@ -252,3 +261,4 @@ ggplot(LTERnutrient.df.kz.test.unique)+
     subtitle = "Red line = Ice on, \nBlue off = Ice off, \nGreen = Stratification onset and offset")
 
 ggsave(paste0("Plots/Entrainment/ice.on.ice.off.strat.load.diff.",var.to.plot,"_",layer.names,".dashed.PDF"), width = 11, height = 8.5, units="in")
+ggsave(paste0("Plots/Entrainment/ice.on.ice.off.strat.load.diff.",var.to.plot,"_",layer.names,".dashed.png"), dpi=300, width = 11, height = 8.5, units="in")
