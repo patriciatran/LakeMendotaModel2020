@@ -159,8 +159,10 @@ for (i in 1:length(layer.to.plot.list)){
     
     LTERnutrient.df.kz.test <- LTERnutrient.df.kz.test %>% 
       group_by(sampledate) %>% 
-      mutate(massArea = trapz(depth, !!as.symbol(var.to.plot)))
+      mutate(massArea = trapz(x=depth, y=!!as.symbol(var.to.plot)))
     
+    
+    LTERnutrient.df.kz.test %>% select(sampledate, var.to.plot, massArea)
     
     # Quickly plot the values over time:
     ggplot(LTERnutrient.df.kz.test)+
@@ -196,7 +198,10 @@ for (i in 1:length(layer.to.plot.list)){
     
     LTERnutrient.df.kz.test.unique <- LTERnutrient.df.kz.test.lag.day %>% select(sampledate, massArea, lagDay) %>% distinct()
     
-    LTERnutrient.df.kz.test.unique$changeinLoad <- lag(LTERnutrient.df.kz.test.unique$massArea)/LTERnutrient.df.kz.test.lag.day$lagDay
+    LTERnutrient.df.kz.test.unique$changeinLoad <- (LTERnutrient.df.kz.test.unique$massArea-lag(LTERnutrient.df.kz.test.unique$massArea))/LTERnutrient.df.kz.test.lag.day$lagDay
+    
+    #LTERnutrient.df.kz.test.unique %>%
+    #  mutate(diff = ifelse(lagDay - 1 == lag(lagDay), massArea - lag(massArea), NA))
     
     write.table(LTERnutrient.df.kz.test.unique, 
                 paste0("Data/LTERnutrient.df.kz.test.unique_",var.to.plot,"_",layer.names,".tsv"),
@@ -212,7 +217,8 @@ for (i in 1:length(layer.to.plot.list)){
       geom_point(aes(x=sampledate, y=changeinLoad), size=4, alpha=0.7)+
       ylab((paste0(var.to.plot, " in g ",expression(day^-1,m^2^-1))))+
       my_theme+
-      ggtitle("Load difference in water column between time points")
+      ggtitle("Load difference in water column between time points")+
+      geom_hline(aes(yintercept=0))
     
     ggsave(paste0("Plots/Entrainment/",var.to.plot,"_",layer.names,".Load.diff.over.time.one.layer.PDF"), width = 11, height = 6, units = "in")
     ggsave(paste0("Plots/Entrainment/",var.to.plot,"_",layer.names,".Load.diff.over.time.one.layer.png"),dpi=300, width = 11, height = 6, units = "in")
@@ -220,6 +226,7 @@ for (i in 1:length(layer.to.plot.list)){
     min(LTERnutrient.df.kz.test.unique$sampledate)
     max(LTERnutrient.df.kz.test.unique$sampledate)
     
+    #Ice Data
     ice.data <- readRDS("Data/ice.data.RDS")
     
     ice.data$date <- as.Date(ice.data$value, origin=paste0(ice.data$year4,"-01-01"))
@@ -229,6 +236,8 @@ for (i in 1:length(layer.to.plot.list)){
     ice.data.to.plot <- ice.data %>% filter(variable == "ice_on_doy" | variable == "ice_off_doy")
     
     ice.data.to.plot <- ice.data.to.plot %>% mutate(color.to.plot = ifelse(variable == "ice_on_doy","red","blue"))
+    
+    ice.data.to.plot <- readRDS("Data/ice.data.to.plot.RDS")
     
     ## Adding stratification onset and off-set information:
     stratification <- read.table("Data/start.onset.offset.TSV", sep="\t", header=TRUE)
@@ -240,7 +249,7 @@ for (i in 1:length(layer.to.plot.list)){
     stratification <- stratification %>% gather(variable_strat, date_strat, Onset_date:Offset_date)
     
     
-    ggplot(LTERnutrient.df.kz.test.unique)+
+   ggplot(LTERnutrient.df.kz.test.unique)+
       geom_point(aes(x=sampledate, y=changeinLoad), size=4, alpha=0.7)+
       ylab(expression(paste("in g ",day^-1,m^2^-1)))+
       my_theme+
@@ -250,7 +259,7 @@ for (i in 1:length(layer.to.plot.list)){
         x=ice.data.to.plot$date,
         xend=ice.data.to.plot$date,
         y=ymax,
-        yend=0,
+        yend=ymin,
         color=ice.data.to.plot$color.to.plot,
         alpha=1,
         linetype=2
@@ -260,12 +269,13 @@ for (i in 1:length(layer.to.plot.list)){
         x=stratification$date_strat,
         xend=stratification$date_strat,
         y=ymax,
-        yend=0,
+        yend=ymin,
         color="dark green",
         alpha=1,
         linetype=2
       )+
-      ylim(ymin-(ymin/100*20),ymax+(ymax/100*20))+
+      geom_hline(aes(yintercept=0))+
+     # ylim(ymin-(ymin/100*20),ymax+(ymax/100*20))+
       ggtitle(paste0(as.character(var.to.plot),", layer=",layer.names),
               subtitle = "Red line = Ice on, \nBlue off = Ice off, \nGreen = Stratification onset and offset")
     
