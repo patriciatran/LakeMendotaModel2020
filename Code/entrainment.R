@@ -253,7 +253,6 @@ for (i in 1:length(layer.to.plot.list)){
       geom_point(aes(x=sampledate, y=changeinLoad), size=4, alpha=0.7)+
       ylab(expression(paste("in g ",day^-1,m^2^-1)))+
       my_theme+
-      ggtitle("Load difference in water column between time points")+
       annotate( #ice-on
         "segment",
         x=ice.data.to.plot$date,
